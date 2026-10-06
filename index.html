@@ -37,9 +37,9 @@ h2{font-size:12px;color:var(--gold2);letter-spacing:3px;text-transform:uppercase
   <button class="cat" onclick="openPanel('drinks')"><b>Напитки</b><small>Холодные напитки</small></button>
  </div>
  <h2>Сервис</h2><div class="services">
-  <button class="service" onclick="callStaff('Официант вызван')">Позвать официанта <span>→</span></button>
-  <button class="service" onclick="callStaff('Кальянный мастер вызван')">Кальянный мастер <span>→</span></button>
-  <button class="service" onclick="callStaff('Запрос на счёт отправлен')">Попросить счёт <span>→</span></button>
+  <button class="service" onclick="callStaff('waiter')">Позвать официанта <span>→</span></button>
+  <button class="service" onclick="callStaff('hookah')">Кальянный мастер <span>→</span></button>
+  <button class="service" onclick="callStaff('bill')">Попросить счёт <span>→</span></button>
  </div>
 </section>
 
@@ -85,5 +85,18 @@ const tg=window.Telegram?.WebApp;if(tg){tg.ready();tg.expand();tg.setHeaderColor
 const q=new URLSearchParams(location.search),p=(tg?.initDataUnsafe?.start_param||q.get('tgWebAppStartParam')||q.get('table')||'').toLowerCase();let table='VIBE LOUNGE';if(p==='vip')table='VIP';else{const m=p.match(/table[_-]?0*(\d+)/);if(m)table='СТОЛ №'+Number(m[1])}document.getElementById('table').textContent=table;
 function openPanel(id){document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');scrollTo(0,0);tg?.HapticFeedback?.selectionChanged()}
 function home(){openPanel('home')}
-function callStaff(msg){tg?.HapticFeedback?.notificationOccurred('success');const t=document.getElementById('toast');t.textContent=msg+' · '+table;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
+const SERVICE_URL='https://vibe-service.samgertsev1147.workers.dev/';
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600)}
+async function callStaff(action){
+ const raw=p;
+ const tableId=raw==='vip'?'vip':(()=>{const m=raw.match(/table[_-]?0*(\d+)/);return m?'table_'+String(Number(m[1])).padStart(2,'0'):''})();
+ if(!tableId){tg?.HapticFeedback?.notificationOccurred('error');showToast('Не удалось определить стол');return}
+ const labels={waiter:'Официант вызван',hookah:'Кальянный мастер вызван',bill:'Запрос на счёт отправлен'};
+ try{
+  const r=await fetch(SERVICE_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({table:tableId,action})});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok||!d.ok)throw new Error(d.error||'Request failed');
+  tg?.HapticFeedback?.notificationOccurred('success');showToast(labels[action]+' · '+table);
+ }catch(e){tg?.HapticFeedback?.notificationOccurred('error');showToast('Не удалось отправить вызов. Попробуйте ещё раз')}
+}
 </script></body></html>
